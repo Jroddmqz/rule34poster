@@ -23,13 +23,14 @@ async def r34():
 
     async def process(rule):
         api_rule_url = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags="
-        soup = BeautifulSoup(requests.get(f"{api_rule_url}{rule[0]}").content, "lxml-xml")
+        print(rule['tag'])
+        soup = BeautifulSoup(requests.get(f"{api_rule_url}{rule['tag']}").content, "lxml-xml")
         count = soup.posts.attrs['count']
 
         var = 0
         post = []
         while var <= math.ceil(int(count) / 100):
-            x_rule = f"{api_rule_url}{rule[0]}&pid={var}"
+            x_rule = f"{api_rule_url}{rule['tag']}&pid={var}"
             soup = BeautifulSoup(requests.get(x_rule).content, "lxml-xml")
             for x in soup.posts:
                 if x == '\n':
@@ -38,21 +39,21 @@ async def r34():
             var += 1
             await asyncio.sleep(1)
 
-        collection = db[f'{rule[0]}']
+        collection = db[f"{rule['tag']}"]
 
         for x in post:
-            item = {"id": x.get('id'), "file_url": x.get('file_url'), "source": x.get('source'), "tag": rule[0],
+            item = {"id": x.get('id'), "file_url": x.get('file_url'), "source": x.get('source'), "tag": rule['tag'],
                     "published": False}
             exist = collection.find_one({"id": x.get('id')})
             if not exist:
                 collection.insert_one(item)
 
-        _chat_id = await is_chat(bot, rule[1])
+        _chat_id = await is_chat(bot, rule['channel'])
         if _chat_id is None:
             print(f"error chat id {_chat_id}")
             return
 
-        regi = f"```{rule[0]} - {count}items - Posting to{_chat_id}```"
+        regi = f"```{rule['tag']} - {count}items - Posting to{_chat_id}```"
         await bot.send_message(log_group, regi)
 
         items = collection.find().sort([("$natural", DESCENDING)])
@@ -92,7 +93,7 @@ async def r34():
 
 {txt}
 
-{rule[2]}
+{rule['caption']}
 """
                         filepath = f"{temp}{filename}"
 
