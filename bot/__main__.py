@@ -4,33 +4,43 @@ import random
 import string
 import logging
 import asyncio
+
+import pymongo
+from pymongo.errors import CursorNotFound
 import pyrogram
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import DESCENDING
 from bot import bot, Mclient, log_group
-from bot.plugins import is_chat, get_tags_rule34xxx, upload_from_queue
+from bot.plugins import is_chat, get_tags_rule34xxx, resizer #upload_from_queue
 from input import tags
 
 temp = '.temp/'
 if not os.path.exists(temp):
     os.makedirs(temp)
 
+
 async def r34():
     regi = "`Ejecutando r34, esto puede tardar algunos minutos`"
     await bot.send_message(log_group, regi)
 
-    async def process(rule):
+    async def process(_tag_):
+        for x in tags:
+            if x['tag'] == _tag_:
+                rule = x
+                print(rule)
+
         api_rule_url = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags="
-        print(rule['tag'])
-        soup = BeautifulSoup(requests.get(f"{api_rule_url}{rule['tag']}").content, "lxml-xml")
+        print(_tag_)
+        soup = BeautifulSoup(requests.get(f"{api_rule_url}{_tag_}").content, "lxml-xml")
         count = soup.posts.attrs['count']
 
         var = 0
+        ok = 0
         post = []
         while var <= math.ceil(int(count) / 100):
-            x_rule = f"{api_rule_url}{rule['tag']}&pid={var}"
+            x_rule = f"{api_rule_url}{_tag_}&pid={var}"
             soup = BeautifulSoup(requests.get(x_rule).content, "lxml-xml")
             for x in soup.posts:
                 if x == '\n':
@@ -39,11 +49,10 @@ async def r34():
             var += 1
             await asyncio.sleep(1)
 
-        collection = db[f"{rule['tag']}"]
+        collection = db[f"{_tag_}"]
 
         for x in post:
-            item = {"id": x.get('id'), "file_url": x.get('file_url'), "source": x.get('source'), "tag": rule['tag'],
-                    "published": False}
+            item = {"id": x.get('id'), "file_url": x.get('file_url'), "source": x.get('source'), "tag": _tag_, "published": False}
             exist = collection.find_one({"id": x.get('id')})
             if not exist:
                 collection.insert_one(item)
@@ -53,7 +62,7 @@ async def r34():
             print(f"error chat id {_chat_id}")
             return
 
-        regi = f"```{rule['tag']} - {count}items - Posting to{_chat_id}```"
+        regi = f"`{_tag_} - {count}items - Posting to{_chat_id}`"
         await bot.send_message(log_group, regi)
 
         items = collection.find().sort([("$natural", DESCENDING)])
@@ -61,56 +70,112 @@ async def r34():
         bound = 0
 
         for x in items:
-            if bound < 10:
-                if not x['published']:  # if x['published'] == False:
-                    bound += 1
-                    archive = x['file_url']
-                    try:
-                        response = requests.get(archive)
-                    except:
-                        regi = f"```Se omite {x['file_url']} con el id {x['id']} , descarga fallida```"
-                        await bot.send_message(log_group, regi)
-                        continue
-                    if response.status_code == 200:
-                        path_, ext_ = os.path.splitext(archive)
-                        now = datetime.now()
-                        date_time = now.strftime("%y%m%d_%H%M%S")
-                        random_chars = ''.join(random.choices(string.ascii_letters + string.digits, k=2))
-                        filename = f"{date_time}{random_chars}{ext_}"
-
-                        with open(os.path.join(temp, filename), "wb") as f:
-                            f.write(response.content)
-
-                        txt = ""
+            try:
+                if bound < 100:
+                    if not x['published']:  # if x['published'] == False:
+                        bound += 1
+                        archive = x['file_url']
                         try:
-                            txt = await get_tags_rule34xxx(x['id'])
-                        except Exception as e:
-                            logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+                            response = requests.get(archive)
+                        except:
+                            regi = f"`Se omite {x['file_url']} con el id {x['id']} , descarga fallida`"
+                            await bot.send_message(log_group, regi)
+                            continue
+                        if response.status_code == 200:
+                            path_, ext_ = os.path.splitext(archive)
+                            now = datetime.now()
+                            date_time = now.strftime("%y%m%d_%H%M%S")
+                            random_chars = ''.join(random.choices(string.ascii_letters + string.digits, k=2))
+                            filename = f"{date_time}{random_chars}{ext_}"
 
-                        url = x['source']
-                        capy = f"""
+                            with open(os.path.join(temp, filename), "wb") as f:
+                                f.write(response.content)
+
+                            txt = ""
+                            try:
+                                txt = await get_tags_rule34xxx(x['id'])
+                            except Exception as e:
+                                logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+
+                            url = x['source']
+                            capy = f"""
 [✨ SAUCE ✨]({url})
 
 {txt}
 
 {rule['caption']}
 """
-                        filepath = f"{temp}{filename}"
+                            filepath = f"{temp}{filename}"
 
-                        await queue.put((bot, filepath, _chat_id, capy, ext_, x))
-            elif bound >= 10:
-                asyncio.create_task(upload_from_queue(queue))
-                regi = "```Subiendo bloque de 10 imagenes```"
-                await bot.send_message(log_group, regi)
-                await queue.join()
-                bound = 0
+                            print(f"{x['file_url']} -- {filepath}")
 
-    queue = asyncio.Queue()
+                            if ext_.lower() in {'.jpg', '.png', '.webp', '.jpeg'}:
+                                new_file = resizer(filepath)
+                                try:
+                                    sended = await bot.send_photo(_chat_id, photo=new_file, caption=str(capy))
+                                    await asyncio.sleep(1)
+                                    await bot.send_document(_chat_id, document=filepath)
+                                except:
+                                    try:
+                                        sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+                                    except Exception as e:
+                                        logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+                                if os.path.exists(new_file):
+                                    os.remove(new_file)
+                            elif ext_.lower() in {'.mp4', '.avi', '.mkv', '.mov'}:
+                                try:
+                                    sended = await bot.send_video(_chat_id, video=filepath, caption=str(capy))
+                                    await asyncio.sleep(1)
+                                    await bot.send_document(_chat_id, document=filepath)
+                                except:
+                                    try:
+                                        sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+                                    except Exception as e:
+                                        logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+                            else:
+                                try:
+                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+                                except Exception as e:
+                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+
+                            os.remove(filepath)
+
+                            if x is None:
+                                pass
+                            else:
+                                if sended != None:
+                                    if not x['published']:
+                                        filter = {'id': x['id']}
+                                        update = {'$set': {'published': True}}
+                                        try:
+                                            collection.update_one(filter, update)
+                                            ok += 1
+                                        except Exception as e:
+                                            logging.error(f"[R34bOT] - Failed: {x['id']}" + f"{str(e)}")
+
+
+                            #await queue.put((bot, filepath, _chat_id, capy, ext_, x))
+                elif bound >= 100:
+                    regi = f"`Enviado {ok}/{count} archivos {_tag_}`"
+                    await bot.send_message(log_group, regi)
+                    await asyncio.sleep(10)
+                    bound = 0
+                    #asyncio.create_task(upload_from_queue(queue))
+                    #regi = "`Subiendo bloque de 10 imagenes`"
+                    #await bot.send_message(log_group, regi)
+                    #await queue.join()
+            except pymongo.errors.CursorNotFound:
+                items = collection.find().sort([("$natural", DESCENDING)])
+                continue
+
+
+    #queue = asyncio.Queue()
     db = Mclient["rule"]
     ruler = tags
 
     while True:
-        tasks = [asyncio.create_task(process(rule)) for rule in ruler]
+        tasks = [asyncio.create_task(process(rule['tag'])) for rule in ruler]
+        print("tasking")
         await asyncio.gather(*tasks)
         await asyncio.sleep(1)
 
