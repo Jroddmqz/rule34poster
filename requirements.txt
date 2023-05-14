@@ -1,0 +1,7 @@
+python-dotenv
+pymongo
+Pyrogram
+beautifulsoup4
+requests
+Pillow
+TgCrypto
