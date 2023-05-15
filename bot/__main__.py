@@ -110,8 +110,11 @@ async def process(_tag_):
                         filepath = f"{temp}{filename}"
 
                         print(f"{x['file_url']} -- {filepath}")
-                        await upload_file(bot, filepath, _chat_id, capy, ext_, x)
-
+                        try:
+                            await upload_file(bot, filepath, _chat_id, capy, ext_, x)
+                            _tag_ += 1
+                        except Exception as e:
+                            logging.error("[R34bOT] - Failed: " + f"{str(e)}")
                         # await queue.put((bot, filepath, _chat_id, capy, ext_, x))
             elif bound >= 100:
                 regi = f"`Archivos procesados {_tag_}\n{ok}/{ok_in_chat}/{count}`"
@@ -130,7 +133,6 @@ async def process(_tag_):
 
     regi = f"`Archivos procesados {_tag_}\n{ok}/{ok_in_chat}/{count}`"
     await bot.send_message(log_group, regi)
-    print("he llegado hasta aqui, fin")
 
 
 async def run():
