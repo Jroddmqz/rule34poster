@@ -13,13 +13,17 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import DESCENDING
 from bot import bot, Mclient, log_group
-from bot.plugins import is_chat, get_tags_rule34xxx, resizer  # upload_from_queue
+from bot.plugins import is_chat, get_tags_rule34xxx, resizer, upload_file
 from input import tags
 
 temp = '.temp/'
 if not os.path.exists(temp):
     os.makedirs(temp)
 
+db = Mclient["rule"]
+collections = {}
+for tag in tags:
+    collections[tag['tag']] = db[tag['tag']]
 
 async def process(_tag_):
     for x in tags:
@@ -33,6 +37,7 @@ async def process(_tag_):
     count = soup.posts.attrs['count']
 
     var = 0
+    ok_in_chat = 0
     ok = 0
     post = []
     while var <= math.ceil(int(count) / 100):
@@ -45,8 +50,7 @@ async def process(_tag_):
         var += 1
         await asyncio.sleep(1)
 
-    db = Mclient["rule"]
-    collection = db[f"{_tag_}"]
+    collection = collections[_tag_]
 
     for x in post:
         item = {"id": x.get('id'), "file_url": x.get('file_url'), "source": x.get('source'), "tag": _tag_,
@@ -68,6 +72,7 @@ async def process(_tag_):
     bound = 0
 
     for x in items:
+        ok_in_chat += 1
         try:
             if bound < 100:
                 if not x['published']:  # if x['published'] == False:
@@ -106,54 +111,55 @@ async def process(_tag_):
                         filepath = f"{temp}{filename}"
 
                         print(f"{x['file_url']} -- {filepath}")
+                        await upload_file(bot, filepath, _chat_id, capy, ext_, x)
 
-                        if ext_.lower() in {'.jpg', '.png', '.webp', '.jpeg'}:
-                            new_file = resizer(filepath)
-                            try:
-                                sended = await bot.send_photo(_chat_id, photo=new_file, caption=str(capy))
-                                await asyncio.sleep(1)
-                                await bot.send_document(_chat_id, document=filepath)
-                            except:
-                                try:
-                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-                                except Exception as e:
-                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-                            if os.path.exists(new_file):
-                                os.remove(new_file)
-                        elif ext_.lower() in {'.mp4', '.avi', '.mkv', '.mov'}:
-                            try:
-                                sended = await bot.send_video(_chat_id, video=filepath, caption=str(capy))
-                                await asyncio.sleep(1)
-                                await bot.send_document(_chat_id, document=filepath)
-                            except:
-                                try:
-                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-                                except Exception as e:
-                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-                        else:
-                            try:
-                                sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-                            except Exception as e:
-                                logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-
-                        os.remove(filepath)
-
-                        if x is None:
-                            pass
-                        else:
-                            if sended != None:
-                                if not x['published']:
-                                    filter = {'id': x['id']}
-                                    update = {'$set': {'published': True}}
-                                    try:
-                                        collection.update_one(filter, update)
-                                        ok += 1
-                                    except Exception as e:
-                                        logging.error(f"[R34bOT] - Failed: {x['id']}" + f"{str(e)}")
-
+#                        if ext_.lower() in {'.jpg', '.png', '.webp', '.jpeg'}:
+#                            new_file = resizer(filepath)
+#                            try:
+#                                sended = await bot.send_photo(_chat_id, photo=new_file, caption=str(capy))
+#                                await asyncio.sleep(1)
+#                                await bot.send_document(_chat_id, document=filepath)
+#                            except:
+#                                try:
+#                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+#                                except Exception as e:
+#                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+#                            if os.path.exists(new_file):
+#                                os.remove(new_file)
+#                        elif ext_.lower() in {'.mp4', '.avi', '.mkv', '.mov'}:
+#                            try:
+#                                sended = await bot.send_video(_chat_id, video=filepath, caption=str(capy))
+#                                await asyncio.sleep(1)
+#                                await bot.send_document(_chat_id, document=filepath)
+#                            except:
+#                                try:
+#                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+#                                except Exception as e:
+#                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+#                        else:
+#                            try:
+#                                sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
+#                            except Exception as e:
+#                                logging.error("[R34bOT] - Failed: " + f"{str(e)}")
+#
+#                        os.remove(filepath)
+#
+#                        if x is None:
+#                            pass
+#                        else:
+#                            if sended != None:
+#                                if not x['published']:
+#                                    filter = {'id': x['id']}
+#                                    update = {'$set': {'published': True}}
+#                                    try:
+#                                        collection.update_one(filter, update)
+#                                        ok += 1
+#                                    except Exception as e:
+#                                        logging.error(f"[R34bOT] - Failed: {x['id']}" + f"{str(e)}")
+#
                         # await queue.put((bot, filepath, _chat_id, capy, ext_, x))
             elif bound >= 100:
-                regi = f"`Enviado {ok}/{count} archivos {_tag_}`"
+                regi = f"`Archivos procesados \n{_tag_}{ok}/{ok_in_chat}/{count}`"
                 await bot.send_message(log_group, regi)
                 await asyncio.sleep(10)
                 bound = 0
@@ -178,15 +184,13 @@ async def run():
 
     ruler = tags
 
-    regi = "`Iniciando r34,`"
-    await bot.send_message(log_group, regi)
     while True:
         tasks = [asyncio.create_task(process(rule['tag'])) for rule in ruler]
         regi = f"`Ejecutando r34`"
         await bot.send_message(log_group, regi)
         await asyncio.gather(*tasks)
         await asyncio.sleep(86400)
-    #await pyrogram.idle()
+    # await pyrogram.idle()
 
 
 # Press the green button in the gutter to run the script.
