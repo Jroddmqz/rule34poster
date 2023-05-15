@@ -114,7 +114,7 @@ async def process(_tag_):
 
                         # await queue.put((bot, filepath, _chat_id, capy, ext_, x))
             elif bound >= 100:
-                regi = f"`Archivos procesados \n{_tag_}{ok}/{ok_in_chat}/{count}`"
+                regi = f"`Archivos procesados {_tag_}\n{ok}/{ok_in_chat}/{count}`"
                 await bot.send_message(log_group, regi)
                 await asyncio.sleep(10)
                 bound = 0
@@ -125,8 +125,10 @@ async def process(_tag_):
         except pymongo.errors.CursorNotFound:
             items = collection.find().sort([("$natural", DESCENDING)])
             continue
+        if ok_in_chat == count:
+            break
 
-    regi = f"`Archivos procesados \n{_tag_}{ok}/{ok_in_chat}/{count}`"
+    regi = f"`Archivos procesados {_tag_}\n{ok}/{ok_in_chat}/{count}`"
     await bot.send_message(log_group, regi)
     print("he llegado hasta aqui, fin")
 
