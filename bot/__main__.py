@@ -4,17 +4,15 @@ import random
 import string
 import logging
 import asyncio
-
 import pymongo
-from pymongo.errors import CursorNotFound
-import pyrogram
 import requests
+from input import tags
 from datetime import datetime
 from bs4 import BeautifulSoup
 from pymongo import DESCENDING
 from bot import bot, Mclient, log_group
-from bot.plugins import is_chat, get_tags_rule34xxx, resizer, upload_file
-from input import tags
+from pymongo.errors import CursorNotFound
+from bot.plugins import is_chat, get_tags_rule34xxx, upload_file
 
 temp = '.temp/'
 if not os.path.exists(temp):
@@ -24,6 +22,7 @@ db = Mclient["rule"]
 collections = {}
 for tag in tags:
     collections[tag['tag']] = db[tag['tag']]
+
 
 async def process(_tag_):
     for x in tags:
@@ -113,50 +112,6 @@ async def process(_tag_):
                         print(f"{x['file_url']} -- {filepath}")
                         await upload_file(bot, filepath, _chat_id, capy, ext_, x)
 
-#                        if ext_.lower() in {'.jpg', '.png', '.webp', '.jpeg'}:
-#                            new_file = resizer(filepath)
-#                            try:
-#                                sended = await bot.send_photo(_chat_id, photo=new_file, caption=str(capy))
-#                                await asyncio.sleep(1)
-#                                await bot.send_document(_chat_id, document=filepath)
-#                            except:
-#                                try:
-#                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-#                                except Exception as e:
-#                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-#                            if os.path.exists(new_file):
-#                                os.remove(new_file)
-#                        elif ext_.lower() in {'.mp4', '.avi', '.mkv', '.mov'}:
-#                            try:
-#                                sended = await bot.send_video(_chat_id, video=filepath, caption=str(capy))
-#                                await asyncio.sleep(1)
-#                                await bot.send_document(_chat_id, document=filepath)
-#                            except:
-#                                try:
-#                                    sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-#                                except Exception as e:
-#                                    logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-#                        else:
-#                            try:
-#                                sended = await bot.send_document(_chat_id, document=filepath, caption=str(capy))
-#                            except Exception as e:
-#                                logging.error("[R34bOT] - Failed: " + f"{str(e)}")
-#
-#                        os.remove(filepath)
-#
-#                        if x is None:
-#                            pass
-#                        else:
-#                            if sended != None:
-#                                if not x['published']:
-#                                    filter = {'id': x['id']}
-#                                    update = {'$set': {'published': True}}
-#                                    try:
-#                                        collection.update_one(filter, update)
-#                                        ok += 1
-#                                    except Exception as e:
-#                                        logging.error(f"[R34bOT] - Failed: {x['id']}" + f"{str(e)}")
-#
                         # await queue.put((bot, filepath, _chat_id, capy, ext_, x))
             elif bound >= 100:
                 regi = f"`Archivos procesados \n{_tag_}{ok}/{ok_in_chat}/{count}`"
@@ -171,8 +126,9 @@ async def process(_tag_):
             items = collection.find().sort([("$natural", DESCENDING)])
             continue
 
-
-# queue = asyncio.Queue()
+    regi = f"`Archivos procesados \n{_tag_}{ok}/{ok_in_chat}/{count}`"
+    await bot.send_message(log_group, regi)
+    print("he llegado hasta aqui, fin")
 
 
 async def run():
