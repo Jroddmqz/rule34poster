@@ -173,6 +173,9 @@ async def run():
     ruta_actual = os.getcwd()
     print(ruta_actual)
 
+    await bot.start()
+    bot.me = await bot.get_me()
+
     ruler = tags
 
     regi = "`Iniciando r34,`"
