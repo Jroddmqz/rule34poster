@@ -114,7 +114,6 @@ async def upload_file(client, file_path, chat_id, capy, ext_, x_item=False):
         try:
             sended = await client.send_video(chat_id, video=file_path, caption=str(capy))
             await asyncio.sleep(1)
-            await client.send_document(chat_id, document=file_path)
         except:
             try:
                 sended = await client.send_document(chat_id, document=file_path, caption=str(capy))
