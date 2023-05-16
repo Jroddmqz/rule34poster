@@ -92,7 +92,7 @@ async def get_tags_rule34xxx(_id_):
     for x in artist_:
         artist_txt = f"{artist_txt} {x} "
 
-    txt = f"CHAR: {char_txt}\nBRAND: {brand_txt}\nARTIST: {artist_txt}"
+    txt = f"+: {char_txt}\n+: {brand_txt}\nARTIST: {artist_txt}"
 
     return txt
 
