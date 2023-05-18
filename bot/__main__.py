@@ -111,7 +111,7 @@ async def process(_tag_):
                         print(f"{x['file_url']} -- {filepath}")
                         try:
                             await upload_file(bot, filepath, _chat_id, capy, ext_, x)
-                            _tag_ += 1
+                            ok += 1
                         except Exception as e:
                             logging.error("[R34bOT] - Failed: " + f"{str(e)}")
                         # await queue.put((bot, filepath, _chat_id, capy, ext_, x))
