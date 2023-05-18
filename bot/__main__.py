@@ -30,8 +30,7 @@ async def process(_tag_):
             rule = x
             print(rule)
 
-    api_rule_url = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags="
-    print(_tag_)
+    api_rule_url = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&limit=100&tags="
     soup = BeautifulSoup(requests.get(f"{api_rule_url}{_tag_}").content, "lxml-xml")
     count = soup.posts.attrs['count']
 
