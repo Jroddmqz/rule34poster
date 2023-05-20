@@ -38,15 +38,21 @@ async def process(_tag_):
     ok_in_chat = 0
     ok = 0
     post = []
-    while var <= math.ceil(int(count) / 100):
-        x_rule = f"{api_rule_url}{_tag_}&pid={var}"
-        soup = BeautifulSoup(requests.get(x_rule).content, "lxml-xml")
+    if rule['dump']:
+        while var <= math.ceil(int(count) / 100):
+            x_rule = f"{api_rule_url}{_tag_}&pid={var}"
+            soup = BeautifulSoup(requests.get(x_rule).content, "lxml-xml")
+            for x in soup.posts:
+                if x == '\n':
+                    continue
+                post.append(x)
+            var += 1
+            await asyncio.sleep(1)
+    else:
         for x in soup.posts:
             if x == '\n':
                 continue
             post.append(x)
-        var += 1
-        await asyncio.sleep(1)
 
     collection = collections[_tag_]
 
