@@ -10,5 +10,11 @@ tags = [
         "channel": "-1001629528057",
         "caption": "😈 https://t.me/+45f-VAxVB2NjN2Jh 😈",
         "dump": False
+    },
+    {
+        "tag": "panties",
+        "channel": "-1001560142462",
+        "caption": "😈 https://t.me/+-rEuWI2vZRxjYzZh 😈",
+        "dump": False
     }
 ]
