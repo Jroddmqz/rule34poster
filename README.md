@@ -1,5 +1,8 @@
 # r34poster
- 
+
+ `python -m venv venv`
+
+ `source venv/bin/activate`
 
 ### **PRE**
 
